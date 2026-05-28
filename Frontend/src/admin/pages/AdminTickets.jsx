@@ -25,11 +25,13 @@ import { Select } from "../../components/ui/select";
 import { formatTicketId } from "../../utils/format";
 import SLABadge from "../components/SLABadge";
 import { formatTimelineDate } from "../../utils/dateUtils";
+import TagFilter from "../../components/TagFilter";
+import TagChip from "../../components/TagChip";
 
 const AdminTickets = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuthStore();
+    const { user, profile } = useAuthStore();
     const { showToast } = useToastStore();
 
     // Data State
@@ -44,6 +46,7 @@ const AdminTickets = () => {
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [priorityFilter, setPriorityFilter] = useState('All');
     const [teamFilter, setTeamFilter] = useState('All');
+    const [tagFilters, setTagFilters] = useState([]);
     const [agents, setAgents] = useState([]); // All staff/admins in the company
 
     const fetchInitialData = async () => {
@@ -182,16 +185,27 @@ const AdminTickets = () => {
     const teams = ['All', 'Software Team', 'Hardware Support', 'Network Ops', 'Security Unit', 'General Support'];
 
     const filteredTickets = useMemo(() => {
-        if (!searchQuery) return tickets;
-        const q = searchQuery.toLowerCase();
-        return tickets.filter(t =>
-            String(t.id).includes(q) ||
-            (t.subject || '').toLowerCase().includes(q) ||
-            (t.summary || '').toLowerCase().includes(q) ||
-            (t.description || '').toLowerCase().includes(q) ||
-            (t.profiles?.full_name || '').toLowerCase().includes(q)
-        );
-    }, [tickets, searchQuery]);
+        let filtered = tickets;
+
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(t =>
+                String(t.id).includes(q) ||
+                (t.subject || '').toLowerCase().includes(q) ||
+                (t.summary || '').toLowerCase().includes(q) ||
+                (t.description || '').toLowerCase().includes(q) ||
+                (t.profiles?.full_name || '').toLowerCase().includes(q)
+            );
+        }
+
+        if (tagFilters.length > 0) {
+            filtered = filtered.filter(ticket =>
+                tagFilters.every(tag => (ticket.tags || []).includes(tag))
+            );
+        }
+
+        return filtered;
+    }, [tickets, searchQuery, tagFilters]);
 
     const getPriorityStyle = (priority) => {
         const p = String(priority || '').toLowerCase();
@@ -221,6 +235,8 @@ const AdminTickets = () => {
 
             {/* 2. Advanced Filtering Station */}
             <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/50 space-y-6">
+                <TagFilter companyId={profile?.company_id || profile?.company} onFilterChange={setTagFilters} />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* Search Field */}
                     <div className="relative group lg:col-span-1">
@@ -347,6 +363,16 @@ const AdminTickets = () => {
                                                 {ticket.category} 
                                                 <span className="text-[9px] font-medium text-slate-300">• {formatTimelineDate(ticket.created_at)}</span>
                                             </span>
+                                            {ticket.tags && ticket.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {ticket.tags.slice(0, 3).map(tag => (
+                                                        <TagChip key={tag} tag={tag} />
+                                                    ))}
+                                                    {ticket.tags.length > 3 && (
+                                                        <span className="text-[10px] text-slate-400 font-medium">+{ticket.tags.length - 3} more</span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
 

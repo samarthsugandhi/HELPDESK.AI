@@ -16,6 +16,7 @@ import { formatTicketId } from "../../utils/format";
 import SLABadge from "../components/SLABadge";
 import { formatFullTimestamp } from "../../utils/dateUtils";
 import TicketTimeline from "../../user/components/TicketTimeline";
+import TicketTagManager from "../../components/TicketTagManager";
 
 const AdminTicketDetail = () => {
     const { ticket_id } = useParams();
@@ -320,6 +321,21 @@ const AdminTicketDetail = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div style={{ background: '#ffffff', borderRadius: '20px', border: '1px solid #f0fdf4', boxShadow: '0 2px 16px rgba(0,0,0,0.05)', padding: '28px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
+                            <BarChart3 size={16} color="#16a34a" />
+                            <h3 style={{ fontSize: '11px', letterSpacing: '0.12em', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>TAGS</h3>
+                        </div>
+                        <TicketTagManager
+                            ticketId={ticket.id}
+                            ticketTitle={displaySummary}
+                            ticketBody={displayText}
+                            category={ticket.category || ''}
+                            companyId={ticket.company_id || ticket.company || ''}
+                        />
                     </div>
 
                     {/* Chat Hub */}

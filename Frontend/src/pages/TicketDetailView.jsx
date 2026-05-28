@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import useTicketStore from '../store/ticketStore';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import TagChip from "../components/TagChip";
 
 function TicketDetailView() {
     const { ticket_id } = useParams();
@@ -170,6 +171,17 @@ function TicketDetailView() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {ticket.tags && ticket.tags.length > 0 && (
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Tags</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {ticket.tags.map(tag => (
+                                                <TagChip key={tag} tag={tag} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
