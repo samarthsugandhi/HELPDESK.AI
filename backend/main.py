@@ -30,6 +30,9 @@ import asyncio
 from pathlib import Path
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import google.generativeai as genai
 
 # Load environment variables from backend/.env
 env_path = Path(__file__).parent / '.env'
@@ -59,6 +62,9 @@ from backend.services.classifier_v3 import classifier_v3 # V3 Power Model
 from backend.services.ner_service import NERService
 from backend.services.duplicate_service import DuplicateService
 from backend.services.rag_service import RagService
+from backend.digest_router import router as digest_router
+from backend.tag_router import router as tag_router
+from backend.digest_service import get_weekly_stats, generate_ai_summary, send_digest_email
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +292,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register routers
+app.include_router(digest_router)
+app.include_router(tag_router)
+
+
+# Scheduler — add this AFTER app is created, BEFORE if __name__ == "__main__"
+def run_weekly_digest():
+    """Runs every Monday 8AM UTC — sends digest to all opted-in admins."""
+    try:
+        supabase_client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        model = genai.GenerativeModel("gemini-pro")
+
+        result = supabase_client.table("company_settings").select("*").eq("digest_enabled", True).execute()
+        for company in (result.data or []):
+            stats = get_weekly_stats(company["company_id"])
+            summary = generate_ai_summary(stats, model)
+            send_digest_email(company["admin_email"], company["company_name"], stats, summary)
+            print(f"Digest sent to {company['admin_email']}")
+    except Exception as e:
+        print(f"Weekly digest job failed: {e}")
+
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_weekly_digest, CronTrigger(day_of_week="mon", hour=8, minute=0))
+scheduler.start()
+
+
+@app.on_event("shutdown")
+def shutdown_scheduler():
+    if scheduler.running:
+        scheduler.shutdown()
 
 
 # ---------------------------------------------------------------------------
